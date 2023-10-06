@@ -1,6 +1,8 @@
 const canvas = document.getElementById("flowFieldCanva");
 const ctx = canvas.getContext('2d');
 
+var rendering = true;
+
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
@@ -36,6 +38,9 @@ class Particle {
     this.maxHistoryLength = Math.floor(Math.random() * 200 + 10);
     this.angle = 0;
     this.timer = this.maxHistoryLength * 2;
+
+    this.colors = ['#4c026b', '#730d9e', "#9622c7", "#b44ae0", "#cd72f2"];
+    this.color = this.colors[Math.floor(Math.random() * this.colors.length)];
   }
 
   draw(context) {
@@ -49,6 +54,7 @@ class Particle {
     for (let i = 0; i < this.history.length; i++) {
       context.lineTo(this.history[i].x, this.history[i].y);
     }
+    context.strokeStyle = this.color;
     context.stroke();
   }
 
@@ -98,7 +104,7 @@ class Particle {
 
 class Effect {
 
-  constructor(width, height) {
+  constructor(canvas) {
     /**
      * @param {Number} width Width of the screen and canvas.
      * @param {Number} height Height of the screen and canvas.
@@ -111,17 +117,28 @@ class Effect {
      * @param {Number} zoomOut The zoom to apply on the pattern displayed (It's trigonometry stuff).
      * @param {Number} curve Modifies the curves the trajectories will follow (Also trigonometry stuff).
      */
-    this.width = width;
-    this.height = height;
+    this.canvas = canvas;
+    this.width = this.canvas.width;
+    this.height = this.canvas.height;
     this.particles = [];
-    this.numberOfParticles = 500;
+    this.numberOfParticles = 1000;
     this.cellSize = 10;
     this.rows;
     this.cols;
     this.flowField = [];
-    this.zoomOut = 0.3;
-    this.curve = 0.2;
+    this.zoomOut = 0.11;
+    this.curve = 0.6;
+    this.debug = false;
     this.init();
+
+    window.addEventListener('keydown', e => {
+      if (e.key === 'd')
+        this.debug = !this.debug
+    })
+
+    window.addEventListener('resize', e => {
+      this.resize(e.target.innerWidth, e.target.innerHeight);
+    })
   }
 
   init() {
@@ -135,12 +152,40 @@ class Effect {
         this.flowField.push(angle);
       }
     }
-    console.log(this.flowField);
-
+    
     // Create particles
+    this.particles = []
     for (let i = 0; i < this.numberOfParticles; i++) {
       this.particles.push(new Particle(this));
     }
+  }
+
+  drawGrid(context) {
+    context.save();
+    context.strokeStyle = 'red';
+    context.lineWidth = 0.7;
+    for (let c = 0; c < this.cols; c++) {
+      context.beginPath();
+      context.moveTo(this.cellSize * c, 0);
+      context.lineTo(this.cellSize * c, this.height);
+      context.stroke();
+    }
+    for (let r = 0; r < this.rows; r++) {
+      context.beginPath();
+      context.moveTo(0, this.cellSize * r);
+      context.lineTo(this.width, this.cellSize * r);
+      context.stroke();
+    }
+    context.restore();
+  }
+
+  resize(width, height) {
+    console.log(width, height);
+    this.canvas.width = width;
+    this.canvas.height = height;
+    this.width = width;
+    this.height = width;
+    this.init();
   }
 
   render(context) {
@@ -149,6 +194,9 @@ class Effect {
      * 
      * @param {CanvasRenderingContext2D} context Object used to draw on the canvas.
      */
+    if (this.debug) {
+      this.drawGrid(context);
+    }
     this.particles.forEach(particle => {
       particle.draw(context);
       particle.update();
@@ -156,7 +204,7 @@ class Effect {
   }
 }
 
-const effect = new Effect(canvas.width, canvas.height);
+const effect = new Effect(canvas);
 
 function animate() {
   /**
@@ -164,7 +212,15 @@ function animate() {
    */
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   effect.render(ctx);
-  requestAnimationFrame(animate);
+  if (rendering)
+    requestAnimationFrame(animate);
 }
+window.addEventListener('keydown', e => {
+  if (e.key === 'p') {
+    rendering = !rendering;
+    if (rendering)
+      animate();
+  }
+})
 
 animate();

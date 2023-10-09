@@ -25,7 +25,6 @@ class Particle {
      * @param {Number} speedModifier A modifier for the speed of the particle, which is also randomized, in order to have particles going at different speeds.
      * @param {Array} history An array containing all previous positions of the particle. Used to display its trail.
      * @param {Number} maxHistoryLength Maximum length of the history array. Determines the length of the trail.
-     * @param {Number} angle Angle of the flow field cell underneath. Used to calculate direction.
      * @param {Number} timer A timer used to determine when the particle should be reset.
      */
     this.effect = effect;
@@ -36,7 +35,6 @@ class Particle {
     this.speedModifier = Math.floor(Math.random() * 3 + 1);
     this.history = [{x: this.x, y: this.y}];
     this.maxHistoryLength = Math.floor(Math.random() * 200 + 10);
-    this.angle = 0;
     this.timer = this.maxHistoryLength * 2;
 
     this.colors = ['#4c026b', '#730d9e', "#9622c7", "#b44ae0", "#cd72f2"];
@@ -69,12 +67,15 @@ class Particle {
       // Calculating index to find the position of the Particle on the Flow Field.
       let x = Math.floor(this.x / this.effect.cellSize);
       let y = Math.floor(this.y / this.effect.cellSize);
-      let index = y * this.effect.cols + x;
-      this.angle = this.effect.flowField[index];
+
+      // Pass if the particle is out of the canvas
+      if (x < 0 || x >= this.effect.cols || y < 0 || y >= this.effect.rows) {
+        return;
+      }
   
-      // Change the speed of the Particle according to the angle of the cell it is currently on, and the inherit speedModifier of the Particle.
-      this.speedX = Math.cos(this.angle);
-      this.speedY = Math.sin(this.angle);
+      // Change the speed of the Particle according to the Vector of the cell it is currently on, and the inherit speedModifier of the Particle.
+      this.speedX = this.effect.flowField[y][x].x;
+      this.speedY = this.effect.flowField[y][x].y;
       this.x += this.speedX * this.speedModifier;
       this.y += this.speedY * this.speedModifier;
   
@@ -88,7 +89,6 @@ class Particle {
     } else {
       this.reset()
     }
-
   }
 
   reset() {
@@ -113,7 +113,7 @@ class Effect {
      * @param {Number} cellSize The size of each individual cells.
      * @param {Number} rows The number of rows of the Flow Field. Computed from the size of the cells and the size of the screen.
      * @param {Number} cols The number of cols of the Flow Field. Computed from the size of the cells and the size of the screen.
-     * @param {Array} flowField This array hold every angle for each cell of the Flow Field.
+     * @param {Array} flowField This array hold every Vector2D for each cell of the Flow Field.
      * @param {Number} zoomOut The zoom to apply on the pattern displayed (It's trigonometry stuff).
      * @param {Number} curve Modifies the curves the trajectories will follow (Also trigonometry stuff).
      */
@@ -121,8 +121,8 @@ class Effect {
     this.width = this.canvas.width;
     this.height = this.canvas.height;
     this.particles = [];
-    this.numberOfParticles = 1000;
-    this.cellSize = 10;
+    this.numberOfParticles = 800;
+    this.cellSize = 30;
     this.rows;
     this.cols;
     this.flowField = [];
@@ -146,11 +146,15 @@ class Effect {
     this.rows = Math.floor(this.height / this.cellSize);
     this.cols = Math.floor(this.width / this.cellSize);
     this.flowField = [];
-    for (let y = 0; y < this.rows; y++) {
-      for (let x = 0; x < this.cols; x++) {
-        let angle = (Math.cos(x * this.zoomOut) + Math.sin(y * this.zoomOut)) * this.curve;
-        this.flowField.push(angle);
+    for (let y = 0; y <= this.rows; y++) {
+      let arr = [];
+      for (let x = 0; x <= this.cols; x++) {
+        let cell = {x: Math.cos(x * this.zoomOut) * this.curve, y: Math.sin(y * this.zoomOut) * this.curve};
+        cell.xpos = x * this.cellSize - this.cellSize / 2;
+        cell.ypos = y * this.cellSize - this.cellSize / 2;
+        arr.push(cell);
       }
+      this.flowField.push(arr);
     }
     
     // Create particles
@@ -164,13 +168,13 @@ class Effect {
     context.save();
     context.strokeStyle = 'red';
     context.lineWidth = 0.7;
-    for (let c = 0; c < this.cols; c++) {
+    for (let c = 0; c <= this.cols; c++) {
       context.beginPath();
       context.moveTo(this.cellSize * c, 0);
       context.lineTo(this.cellSize * c, this.height);
       context.stroke();
     }
-    for (let r = 0; r < this.rows; r++) {
+    for (let r = 0; r <= this.rows; r++) {
       context.beginPath();
       context.moveTo(0, this.cellSize * r);
       context.lineTo(this.width, this.cellSize * r);
@@ -179,8 +183,23 @@ class Effect {
     context.restore();
   }
 
+  drawVectors(context) {
+    context.save();
+    context.strokeStyle = 'white';
+    context.lineWidth = 0.7;
+    this.flowField.forEach(row => {
+      row.forEach(cell => {
+        context.beginPath();
+        context.moveTo(cell.xpos, cell.ypos);
+        context.lineTo(cell.xpos + cell.x * 10, cell.ypos + cell.y * 10);
+        context.stroke();
+
+      })
+    })
+    context.restore();
+  }
+
   resize(width, height) {
-    console.log(width, height);
     this.canvas.width = width;
     this.canvas.height = height;
     this.width = width;
@@ -196,6 +215,7 @@ class Effect {
      */
     if (this.debug) {
       this.drawGrid(context);
+      this.drawVectors(context);
     }
     this.particles.forEach(particle => {
       particle.draw(context);
@@ -203,8 +223,6 @@ class Effect {
     })
   }
 }
-
-const effect = new Effect(canvas);
 
 function animate() {
   /**
@@ -215,6 +233,7 @@ function animate() {
   if (rendering)
     requestAnimationFrame(animate);
 }
+
 window.addEventListener('keydown', e => {
   if (e.key === 'p') {
     rendering = !rendering;
@@ -223,4 +242,5 @@ window.addEventListener('keydown', e => {
   }
 })
 
+const effect = new Effect(canvas);
 animate();

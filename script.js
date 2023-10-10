@@ -73,9 +73,10 @@ class Particle {
         return;
       }
   
-      // Change the speed of the Particle according to the Vector of the cell it is currently on, and the inherit speedModifier of the Particle.
-      this.speedX = this.effect.flowField[y][x].x;
-      this.speedY = this.effect.flowField[y][x].y;
+      // Change the speed of the Particle according to the Vectors of the close nodes, and the inherit speedModifier of the Particle.
+      let interpolatedValues = this.effect.getInterpolation(this);
+      this.speedX = interpolatedValues.x;
+      this.speedY = interpolatedValues.y;
       this.x += this.speedX * this.speedModifier;
       this.y += this.speedY * this.speedModifier;
   
@@ -121,7 +122,7 @@ class Effect {
     this.width = this.canvas.width;
     this.height = this.canvas.height;
     this.particles = [];
-    this.numberOfParticles = 800;
+    this.numberOfParticles = 1000;
     this.cellSize = 30;
     this.rows;
     this.cols;
@@ -149,9 +150,10 @@ class Effect {
     for (let y = 0; y <= this.rows; y++) {
       let arr = [];
       for (let x = 0; x <= this.cols; x++) {
-        let cell = {x: Math.cos(x * this.zoomOut) * this.curve, y: Math.sin(y * this.zoomOut) * this.curve};
-        cell.xpos = x * this.cellSize - this.cellSize / 2;
-        cell.ypos = y * this.cellSize - this.cellSize / 2;
+        // let cell = {x: Math.cos(x * this.zoomOut) * this.curve, y: Math.sin(y * this.zoomOut) * this.curve};
+        let cell = this.randomVector();
+        cell.xpos = x * this.cellSize;
+        cell.ypos = y * this.cellSize;
         arr.push(cell);
       }
       this.flowField.push(arr);
@@ -205,6 +207,41 @@ class Effect {
     this.width = width;
     this.height = width;
     this.init();
+  }
+
+  randomVector(){
+    let theta = Math.random() * 2 * Math.PI;
+    return {x: Math.cos(theta), y: Math.sin(theta)};
+  }
+  
+  bilinearInterp(x, a, b, c, d, axis='x') {
+    let row0 = (b.xpos - x.x) / (b.xpos - a.xpos) * a[axis] + (x.x - a.xpos) / (b.xpos - a.xpos) * b[axis];
+    let row1 = (b.xpos - x.x) / (b.xpos - a.xpos) * c[axis] + (x.x - a.xpos) / (b.xpos - a.xpos) * d[axis];
+
+    return (c.ypos - x.y) / (c.ypos - a.ypos) * row0 + (x.y - a.ypos) / (c.ypos - a.ypos) * row1
+  }
+
+  getInterpolation(particle) {
+    let topleft_node_x = ~~(particle.x / this.cellSize);
+    let topleft_node_y = ~~(particle.y / this.cellSize);
+    //interpolate
+    let x_value = this.bilinearInterp(
+      particle,
+      this.flowField[topleft_node_y][topleft_node_x],
+      this.flowField[topleft_node_y][topleft_node_x + 1],
+      this.flowField[topleft_node_y + 1][topleft_node_x],
+      this.flowField[topleft_node_y + 1][topleft_node_x + 1],
+      'x'
+    );
+    let y_value = this.bilinearInterp(
+      particle,
+      this.flowField[topleft_node_y][topleft_node_x],
+      this.flowField[topleft_node_y][topleft_node_x + 1],
+      this.flowField[topleft_node_y + 1][topleft_node_x],
+      this.flowField[topleft_node_y + 1][topleft_node_x + 1],
+      'y'
+    );
+    return {x: x_value, y: y_value};
   }
 
   render(context) {

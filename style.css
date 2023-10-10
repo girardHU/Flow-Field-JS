@@ -5,6 +5,9 @@
 }
 
 canvas {
-  background: black;
   position: absolute;
+}
+
+canvas#debugCanvas {
+  background: black;
 }

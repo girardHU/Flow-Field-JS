@@ -1,15 +1,24 @@
-const canvas = document.getElementById("flowFieldCanva");
+const canvas = document.getElementById("flowFieldCanvas");
+const debugcanvas = document.getElementById("debugCanvas");
 const ctx = canvas.getContext('2d');
+const debugctx = debugcanvas.getContext('2d');
 
 var rendering = true;
+var debug = false;
 
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
+debugcanvas.width = window.innerWidth;
+debugcanvas.height = window.innerHeight;
 
 // Canvas settings
 ctx.fillStyle = 'white';
 ctx.strokeStyle = 'white';
 ctx.lineWidth = 1;
+// Canvas settings
+debugctx.fillStyle = 'white';
+debugctx.strokeStyle = 'white';
+debugctx.lineWidth = 1;
 
 class Particle {
 
@@ -104,7 +113,7 @@ class Particle {
 
 class Effect {
 
-  constructor(canvas) {
+  constructor(canvas, debugcanvas) {
     /**
      * @param {Number} width Width of the screen and canvas.
      * @param {Number} height Height of the screen and canvas.
@@ -118,6 +127,7 @@ class Effect {
      * @param {Number} curve Modifies the curves the trajectories will follow (Also trigonometry stuff).
      */
     this.canvas = canvas;
+    this.debugcanvas = debugcanvas;
     this.width = this.canvas.width;
     this.height = this.canvas.height;
     this.particles = [];
@@ -128,13 +138,7 @@ class Effect {
     this.flowField = [];
     this.zoomOut = 0.11;
     this.curve = 0.6;
-    this.debug = false;
     this.init();
-
-    window.addEventListener('keydown', e => {
-      if (e.key === 'd')
-        this.debug = !this.debug
-    })
 
     window.addEventListener('resize', e => {
       this.resize(e.target.innerWidth, e.target.innerHeight);
@@ -180,9 +184,10 @@ class Effect {
   }
 
   resize(width, height) {
-    console.log(width, height);
     this.canvas.width = width;
     this.canvas.height = height;
+    this.debugcanvas.width = width;
+    this.debugcanvas.height = height;
     this.width = width;
     this.height = width;
     this.init();
@@ -194,9 +199,6 @@ class Effect {
      * 
      * @param {CanvasRenderingContext2D} context Object used to draw on the canvas.
      */
-    if (this.debug) {
-      this.drawGrid(context);
-    }
     this.particles.forEach(particle => {
       particle.draw(context);
       particle.update();
@@ -204,7 +206,7 @@ class Effect {
   }
 }
 
-const effect = new Effect(canvas);
+const effect = new Effect(canvas, debugcanvas);
 
 function animate() {
   /**
@@ -216,7 +218,14 @@ function animate() {
     requestAnimationFrame(animate);
 }
 window.addEventListener('keydown', e => {
-  if (e.key === 'p') {
+  if (e.key === 'd') {
+    debug = !debug
+    if (debug) {
+      effect.drawGrid(debugctx);
+    } else {
+      debugctx.clearRect(0, 0, debugcanvas.width, debugcanvas.height);
+    }
+  } else if (e.key === 'p') {
     rendering = !rendering;
     if (rendering)
       animate();

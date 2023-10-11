@@ -139,6 +139,9 @@ class Effect {
     this.flowField = [];
     this.zoomOut = 0.11;
     this.curve = 0.6;
+    this.incr = 0.1;
+    this.perlin = new Perlin(this.width, this.height);
+
     this.init();
 
     window.addEventListener('resize', e => {
@@ -151,16 +154,21 @@ class Effect {
     this.rows = Math.floor(this.height / this.cellSize);
     this.cols = Math.floor(this.width / this.cellSize);
     this.flowField = [];
+    let yoff = 0;
     for (let y = 0; y <= this.rows; y++) {
       let arr = [];
+      let xoff = 0;
       for (let x = 0; x <= this.cols; x++) {
         // let cell = {x: Math.cos(x * this.zoomOut) * this.curve, y: Math.sin(y * this.zoomOut) * this.curve};
-        let cell = this.randomVector();
+        let angle = this.perlin.noise(xoff, yoff) * Math.PI * 2;
+        let cell = {x: Math.cos(angle), y: Math.sin(angle)};
         cell.xpos = x * this.cellSize;
         cell.ypos = y * this.cellSize;
         arr.push(cell);
+        xoff += this.incr;
       }
       this.flowField.push(arr);
+      yoff += this.incr;
     }
     
     // Create particles
@@ -215,11 +223,6 @@ class Effect {
     this.init();
   }
 
-  randomVector(){
-    let theta = Math.random() * 2 * Math.PI;
-    return {x: Math.cos(theta), y: Math.sin(theta)};
-  }
-  
   bilinearInterp(x, a, b, c, d, axis='x') {
     let row0 = (b.xpos - x.x) / (b.xpos - a.xpos) * a[axis] + (x.x - a.xpos) / (b.xpos - a.xpos) * b[axis];
     let row1 = (b.xpos - x.x) / (b.xpos - a.xpos) * c[axis] + (x.x - a.xpos) / (b.xpos - a.xpos) * d[axis];
@@ -278,7 +281,7 @@ window.addEventListener('keydown', e => {
     debug = !debug
     if (debug) {
       effect.drawGrid(debugctx);
-      effect/drawVectors(debugctx);
+      effect.drawVectors(debugctx);
     } else {
       debugctx.clearRect(0, 0, debugcanvas.width, debugcanvas.height);
     }

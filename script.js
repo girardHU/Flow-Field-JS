@@ -140,6 +140,7 @@ class Effect {
     this.zoomOut = 0.11;
     this.curve = 0.6;
     this.incr = 0.1;
+    this.debug = false;
     this.perlin = new Perlin(this.width, this.height);
 
     this.init();
@@ -264,6 +265,21 @@ class Effect {
       particle.update();
     })
   }
+
+  reset(context) {
+    context.clearRect(0, 0, this.width, this.height);
+    this.perlin.init(this.width, this.height);
+    this.init();
+  }
+
+  drawDebug(context) {
+    this.debug = !this.debug;
+    context.clearRect(0, 0, this.width, this.height);
+    if (this.debug) {
+      this.drawGrid(context);
+      this.drawVectors(context);
+    }
+  }
 }
 
 function animate() {
@@ -278,28 +294,29 @@ function animate() {
 
 window.addEventListener('keydown', e => {
   if (e.key === 'd') {
-    debug = !debug
-    if (debug) {
-      effect.drawGrid(debugctx);
-      effect.drawVectors(debugctx);
-    } else {
-      debugctx.clearRect(0, 0, debugcanvas.width, debugcanvas.height);
-    }
+    effect.drawDebug(debugctx);
   } else if (e.key === 'p') {
     rendering = !rendering;
-    if (rendering)
+    if (rendering) {
       animate();
-  } else if (e.key === 'r') {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    effect.perlin.init(canvas.width, canvas.height);
-    effect.init();
-    if (debug) {
-      debugctx.clearRect(0, 0, debugcanvas.width, debugcanvas.height);
-      effect.drawGrid(debugctx);
-      effect.drawVectors(debugctx);
     }
+  } else if (e.key === 'r') {
+    effect.reset(ctx);
   }
 })
 
 const effect = new Effect(canvas, debugcanvas);
 animate();
+
+document.getElementById("pauseButton").addEventListener("click", e => {
+  rendering = !rendering;
+  if (rendering) {
+    animate();
+  }
+})
+document.getElementById("resetButton").addEventListener("click", e => {
+  effect.reset(ctx);
+})
+document.getElementById("debugButton").addEventListener("click", e => {
+  effect.drawDebug(debugctx);
+})

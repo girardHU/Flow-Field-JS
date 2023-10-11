@@ -6,8 +6,24 @@
 
 canvas {
   position: absolute;
+  top: 0;
 }
 
 canvas#debugCanvas {
   background: black;
+}
+
+.button-wrapper {
+  margin-top: 5px;
+  margin-left: 5px;
+}
+
+.button-wrapper button {
+  display: block;
+  background-color: rgba(0, 150, 255, 0.4);
+  color: white;
+  border: 1px solid rgb(0, 98, 163);
+  width: 8%;
+  cursor: pointer;
+  padding: 0.2em;
 }

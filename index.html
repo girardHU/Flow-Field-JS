@@ -7,9 +7,13 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <canvas id="debugCanvas" style="z-index: 1;"></canvas>
-  <canvas id="flowFieldCanvas" style="z-index: 2;"></canvas>
-  
+  <div class="button-wrapper" style="z-index: 1;">
+    <button id="resetButton">Reset (r)</button>
+    <button id="debugButton">Debug (d)</button>
+    <button id="pauseButton">Pause (p)</button>
+  </div>
+  <canvas id="debugCanvas" style="z-index: -1;"></canvas>
+  <canvas id="flowFieldCanvas" style="z-index: -1;"></canvas>
   <script src="perlin.js"></script>
   <script src="script.js"></script>
 </body>

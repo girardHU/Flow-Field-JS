@@ -1,11 +1,11 @@
 class Perlin {
   constructor(height, width) {
-    this.gradients = {};
-    this.perlinNoises = {};
     this.init(height, width);
   }
-
+  
   init(height, width) {
+    this.gradients = {};
+    this.perlinNoises = {};
     for (let x = 0; x < width; x++) {
       for (let y = 0; y < height; y++) {
         this.gradients[[x,y]] = this.randomVector();
@@ -38,7 +38,6 @@ class Perlin {
     let dy = y - iy;
 
     // Compute the dot-product
-    console.log(this.gradients)
     return (dx * this.gradients[[ix, iy]].x + dy * this.gradients[[ix, iy]].y);
   }
 

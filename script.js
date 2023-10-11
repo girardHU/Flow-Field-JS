@@ -289,6 +289,15 @@ window.addEventListener('keydown', e => {
     rendering = !rendering;
     if (rendering)
       animate();
+  } else if (e.key === 'r') {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    effect.perlin.init(canvas.width, canvas.height);
+    effect.init();
+    if (debug) {
+      debugctx.clearRect(0, 0, debugcanvas.width, debugcanvas.height);
+      effect.drawGrid(debugctx);
+      effect.drawVectors(debugctx);
+    }
   }
 })
 

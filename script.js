@@ -6,6 +6,17 @@ const debugctx = debugcanvas.getContext('2d');
 var rendering = true;
 var debug = false;
 
+const COLOR_GRADIENTS = [['#4c026b', '#730d9e', "#9622c7", "#b44ae0", "#cd72f2"], // Indigo
+                          ['#0042ad', '#184896', '#2167d9', '#4a89f0', '#72a4f7'], // Blue
+                          ['#284a2f', '#2b8a3e', '#6cad79', '#069122', '#a4edb2'], // Green
+                          ['#c90a1d', '#c9790a', '#c9b90a', '#33c90a', '#0a46c9', '#930ac9', '#c90aa6'], // Rainbow
+                          ['#fcba03', '#ab810f', '#e3b842', '#73570a', '#ffdf87'], // Yellow
+                          ['#ffc387', '#b85c00', '#f0851a', '#805428', '#ff9326'], // Orange
+                          ['#f52c3d', '#ff0016', '#91000d', '#f77c87', '#852931'], // Red
+                          ['#fcba03', '#ab810f', '#e3b842', '#73570a', '#ffdf87', '#ffc387', '#b85c00', '#f0851a', '#805428', '#ff9326', '#f52c3d', '#ff0016', '#91000d', '#f77c87', '#852931'], // Sun
+                          ['#00fffb', '#03adab', '#41f0ee', '#278c8b', '#78f0ef'], // Light Blue
+                        ]
+
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 debugcanvas.width = window.innerWidth;
@@ -45,9 +56,7 @@ class Particle {
     this.history = [{x: this.x, y: this.y}];
     this.maxHistoryLength = Math.floor(Math.random() * 200 + 10);
     this.timer = this.maxHistoryLength * 2;
-
-    this.colors = ['#4c026b', '#730d9e', "#9622c7", "#b44ae0", "#cd72f2"];
-    this.color = this.colors[Math.floor(Math.random() * this.colors.length)];
+    this.color = this.effect.colors[Math.floor(Math.random() * this.effect.colors.length)];
   }
 
   draw(context) {
@@ -114,7 +123,7 @@ class Particle {
 
 class Effect {
 
-  constructor(canvas, debugcanvas) {
+  constructor(canvas, ffcontext, debugcontext) {
     /**
      * @param {Number} width Width of the screen and canvas.
      * @param {Number} height Height of the screen and canvas.
@@ -124,104 +133,120 @@ class Effect {
      * @param {Number} rows The number of rows of the Flow Field. Computed from the size of the cells and the size of the screen.
      * @param {Number} cols The number of cols of the Flow Field. Computed from the size of the cells and the size of the screen.
      * @param {Array} flowField This array hold every Vector2D for each cell of the Flow Field.
-     * @param {Number} zoomOut The zoom to apply on the pattern displayed (It's trigonometry stuff).
-     * @param {Number} curve Modifies the curves the trajectories will follow (Also trigonometry stuff).
      */
-    this.canvas = canvas;
-    this.debugcanvas = debugcanvas;
-    this.width = this.canvas.width;
-    this.height = this.canvas.height;
+    this.ffcontext = ffcontext;
+    this.debugcontext = debugcontext;
+    this.width = canvas.width;
+    this.height = canvas.height;
     this.particles = [];
-    this.numberOfParticles = 1000;
+    this.numberOfParticles = 700;
     this.cellSize = 30;
     this.rows;
     this.cols;
     this.flowField = [];
-    this.zoomOut = 0.11;
-    this.curve = 0.6;
-    this.incr = 0.1;
+    // this.zoomOut = 0.11;
+    // this.curve = 0.6;
+    this.incr = 0.04; // 0.1
     this.debug = false;
+    this.colors = COLOR_GRADIENTS[Math.floor(Math.random() * COLOR_GRADIENTS.length)];
     this.perlin = new Perlin(this.width, this.height);
 
     this.init();
-
-    window.addEventListener('resize', e => {
-      this.resize(e.target.innerWidth, e.target.innerHeight);
-    })
   }
 
   init() {
-    // Create Flow Field
-    this.rows = Math.floor(this.height / this.cellSize);
-    this.cols = Math.floor(this.width / this.cellSize);
-    this.flowField = [];
-    let yoff = 0;
-    for (let y = 0; y <= this.rows; y++) {
-      let arr = [];
-      let xoff = 0;
-      for (let x = 0; x <= this.cols; x++) {
-        // let cell = {x: Math.cos(x * this.zoomOut) * this.curve, y: Math.sin(y * this.zoomOut) * this.curve};
-        let angle = this.perlin.noise(xoff, yoff) * Math.PI * 2;
-        let cell = {x: Math.cos(angle), y: Math.sin(angle)};
-        cell.xpos = x * this.cellSize;
-        cell.ypos = y * this.cellSize;
-        arr.push(cell);
-        xoff += this.incr;
-      }
-      this.flowField.push(arr);
-      yoff += this.incr;
+    this.generateFlowField();
+    this.generateParticles();
+  }
+
+  generateFlowField(clear=false) {
+    this.rows = Math.floor(this.height / this.cellSize) + 1;
+    this.cols = Math.floor(this.width / this.cellSize) + 1;
+
+    if (clear) {
+      localStorage.removeItem("flowField");
     }
-    
+
+    this.flowField = JSON.parse(localStorage.getItem("flowField"));
+
+    if (this.flowField === null) {
+      console.log('GENERATING FLOW FIELD')
+      this.flowField = [];
+      let yoff = 0;
+      for (let y = 0; y <= this.rows; y++) {
+        let arr = [];
+        let xoff = 0;
+        for (let x = 0; x <= this.cols; x++) {
+          // let cell = {x: Math.cos(x * this.zoomOut) * this.curve, y: Math.sin(y * this.zoomOut) * this.curve};
+          let angle = this.perlin.noise(xoff, yoff) * Math.PI * 2;
+          let cell = {x: Math.cos(angle), y: Math.sin(angle)};
+          cell.xpos = x * this.cellSize;
+          cell.ypos = y * this.cellSize;
+          arr.push(cell);
+          xoff += this.incr;
+        }
+        this.flowField.push(arr);
+        yoff += this.incr;
+      }
+    }
+    localStorage.setItem("flowField", JSON.stringify(this.flowField));
+  }
+
+  generateParticles() {
     // Create particles
-    this.particles = []
+    this.particles = [];
     for (let i = 0; i < this.numberOfParticles; i++) {
       this.particles.push(new Particle(this));
     }
   }
 
-  drawGrid(context) {
-    context.save();
-    context.strokeStyle = 'red';
-    context.lineWidth = 0.7;
+  drawGrid() {
+    let debugc = this.debugcontext;
+    debugc.save();
+    debugc.strokeStyle = 'red';
+    debugc.lineWidth = 0.7;
     for (let c = 0; c <= this.cols; c++) {
-      context.beginPath();
-      context.moveTo(this.cellSize * c, 0);
-      context.lineTo(this.cellSize * c, this.height);
-      context.stroke();
+      debugc.beginPath();
+      debugc.moveTo(this.cellSize * c, 0);
+      debugc.lineTo(this.cellSize * c, this.height);
+      debugc.stroke();
     }
     for (let r = 0; r <= this.rows; r++) {
-      context.beginPath();
-      context.moveTo(0, this.cellSize * r);
-      context.lineTo(this.width, this.cellSize * r);
-      context.stroke();
+      debugc.beginPath();
+      debugc.moveTo(0, this.cellSize * r);
+      debugc.lineTo(this.width, this.cellSize * r);
+      debugc.stroke();
     }
-    context.restore();
+    debugc.restore();
   }
 
-  drawVectors(context) {
-    context.save();
-    context.strokeStyle = 'white';
-    context.lineWidth = 0.7;
+  drawVectors() {
+    let debugc = this.debugcontext;
+    debugc.save();
+    debugc.strokeStyle = 'white';
+    debugc.lineWidth = 0.7;
     this.flowField.forEach(row => {
       row.forEach(cell => {
-        context.beginPath();
-        context.moveTo(cell.xpos, cell.ypos);
-        context.lineTo(cell.xpos + cell.x * 10, cell.ypos + cell.y * 10);
-        context.stroke();
+        debugc.beginPath();
+        debugc.moveTo(cell.xpos, cell.ypos);
+        debugc.lineTo(cell.xpos + cell.x * 10, cell.ypos + cell.y * 10);
+        debugc.stroke();
 
       })
     })
-    context.restore();
+    this.debugcontext.restore();
   }
 
-  resize(width, height) {
-    this.canvas.width = width;
-    this.canvas.height = height;
-    this.debugcanvas.width = width;
-    this.debugcanvas.height = height;
+  resize(canvas, debugcanvas, width, height) {
+    canvas.width = width;
+    canvas.height = height;
+    debugcanvas.width = width;
+    debugcanvas.height = height;
     this.width = width;
-    this.height = width;
-    this.init();
+    this.height = height;
+    this.generateFlowField(true);
+    this.resetRendering();
+    this.drawDebug(true);
   }
 
   bilinearInterp(x, a, b, c, d, axis='x') {
@@ -254,60 +279,106 @@ class Effect {
     return {x: x_value, y: y_value};
   }
 
-  render(context) {
+  render() {
     /**
      * Called each frame. For each particle in the particles array, draw them on canvas then update their position.
      * 
-     * @param {CanvasRenderingContext2D} context Object used to draw on the canvas.
      */
     this.particles.forEach(particle => {
-      particle.draw(context);
+      particle.draw(this.ffcontext);
       particle.update();
     })
   }
 
-  reset(context) {
-    context.clearRect(0, 0, this.width, this.height);
+  resetPerlin() {
     this.perlin.init(this.width, this.height);
-    this.init();
+    this.generateFlowField(true);
+    this.resetRendering();
+    this.drawDebug(true);
   }
 
-  drawDebug(context) {
-    this.debug = !this.debug;
-    context.clearRect(0, 0, this.width, this.height);
+  resetRendering() {
+    this.ffcontext.clearRect(0, 0, this.width, this.height);
+    this.particles.forEach(particle => {
+      particle.reset();
+    });
+  }
+
+  drawDebug(forceDraw=false) {
+    if (!forceDraw)
+      this.debug = !this.debug;
+    this.debugcontext.clearRect(0, 0, this.width, this.height);
     if (this.debug) {
-      this.drawGrid(context);
-      this.drawVectors(context);
+      this.drawGrid();
+      this.drawVectors();
     }
+  }
+
+  changeColors() {
+    this.colors = COLOR_GRADIENTS[Math.floor(Math.random() * COLOR_GRADIENTS.length)];
+    this.generateParticles();
   }
 }
 
-function animate() {
+class Chrono {
+  constructor() {
+    this.lastChrono;
+    this.frameRate = 0;
+    this.frameRateElement = document.getElementById('frameRate');
+    this.second = 0;
+  }
+
+  computeChrono(chrono) {
+    if (this.lastChrono) {
+      let elapsed = chrono - this.lastChrono;
+      this.second += elapsed;
+      this.frameRate += 1;
+    }
+    if (this.second >= 1000) {
+      this.frameRateElement.innerText = this.frameRate;
+      this.second = 0;
+      this.frameRate = 0;
+    }
+    this.lastChrono = chrono;
+  }
+}
+
+const chrono = new Chrono();
+
+function animate(timestamp) {
   /**
    * This function is the main loop of the program. It clears the whole canvas, render every object then loop again.
    */
+  chrono.computeChrono(timestamp);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  effect.render(ctx);
+  effect.render();
   if (rendering)
     requestAnimationFrame(animate);
 }
 
 window.addEventListener('keydown', e => {
   if (e.key === 'd') {
-    effect.drawDebug(debugctx);
+    effect.drawDebug();
   } else if (e.key === 'p') {
     rendering = !rendering;
     if (rendering) {
       animate();
     }
-  } else if (e.key === 'r') {
-    effect.reset(ctx);
+  } else if (e.key === 'r' && !e.ctrlKey) {
+    effect.resetPerlin(ctx);
+  } else if (e.key === 'c') {
+    effect.changeColors();
   }
 })
 
-const effect = new Effect(canvas, debugcanvas);
+const effect = new Effect(canvas, ctx, debugctx);
 animate();
 
+window.addEventListener('resize', e => {
+  effect.resize(canvas, debugcanvas, e.target.innerWidth, e.target.innerHeight);
+})
+
+// Buttons Events
 document.getElementById("pauseButton").addEventListener("click", e => {
   rendering = !rendering;
   if (rendering) {
@@ -315,8 +386,27 @@ document.getElementById("pauseButton").addEventListener("click", e => {
   }
 })
 document.getElementById("resetButton").addEventListener("click", e => {
-  effect.reset(ctx);
+  effect.resetPerlin(ctx);
 })
 document.getElementById("debugButton").addEventListener("click", e => {
-  effect.drawDebug(debugctx);
+  effect.drawDebug();
 })
+document.getElementById("changeColorButton").addEventListener("click", e => {
+  effect.changeColors();
+})
+
+// Sliders Events
+document.getElementById("perlinIncrementInput").addEventListener("input", e => {
+  effect.incr = parseFloat(e.target.value);
+  effect.resetPerlin();
+});
+document.getElementById("nbParticlesInput").addEventListener("input", e => {
+  effect.numberOfParticles = parseInt(e.target.value, 10);
+  effect.generateParticles();
+});
+document.getElementById("cellSizeSlider").addEventListener("input", e => {
+  effect.cellSize = e.target.value;
+  effect.generateFlowField(true);
+  effect.resetRendering(ctx);
+  effect.drawDebug(true);
+});

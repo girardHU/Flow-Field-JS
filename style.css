@@ -27,3 +27,19 @@ canvas#debugCanvas {
   cursor: pointer;
   padding: 0.2em;
 }
+
+.sliders-wrapper {
+  position: absolute;
+  bottom: 0;
+}
+
+div#frameRate {
+  color: white;
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+.sliders-wrapper input {
+  display: block;
+}

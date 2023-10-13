@@ -11,7 +11,14 @@
     <button id="resetButton">Reset (r)</button>
     <button id="debugButton">Debug (d)</button>
     <button id="pauseButton">Pause (p)</button>
+    <button id="changeColorButton">Colors (c)</button>
   </div>
+  <div class="sliders-wrapper" style="z-index: 1;">
+    <input type="number" id="perlinIncrementInput" value="0.04" step=".01">
+    <input type="number" id="nbParticlesInput" value="700" step="100">
+    <input type="range" id="cellSizeSlider" min="10" max="50" value="30">
+  </div>
+  <div id="frameRate" style="z-index: 1;"></div>
   <canvas id="debugCanvas" style="z-index: -1;"></canvas>
   <canvas id="flowFieldCanvas" style="z-index: -1;"></canvas>
   <script src="perlin.js"></script>

@@ -4,7 +4,14 @@ const ctx = canvas.getContext('2d');
 const debugctx = debugcanvas.getContext('2d');
 
 var rendering = true;
-var debug = false;
+
+/**
+ * S : single responsability
+ * O : Open/closed
+ * L : Liskov substitution
+ * I : Interface segregation
+ * D : Dependency inversion
+ */
 
 const COLOR_GRADIENTS = [['#4c026b', '#730d9e', "#9622c7", "#b44ae0", "#cd72f2"], // Indigo
                           ['#0042ad', '#184896', '#2167d9', '#4a89f0', '#72a4f7'], // Blue
@@ -46,6 +53,7 @@ class Particle {
      * @param {Array} history An array containing all previous positions of the particle. Used to display its trail.
      * @param {Number} maxHistoryLength Maximum length of the history array. Determines the length of the trail.
      * @param {Number} timer A timer used to determine when the particle should be reset.
+     * @param {String} color The color of the particle, chosen from an array of colors.
      */
     this.effect = effect;
     this.x = Math.floor(Math.random() * this.effect.width);
@@ -133,6 +141,10 @@ class Effect {
      * @param {Number} rows The number of rows of the Flow Field. Computed from the size of the cells and the size of the screen.
      * @param {Number} cols The number of cols of the Flow Field. Computed from the size of the cells and the size of the screen.
      * @param {Array} flowField This array hold every Vector2D for each cell of the Flow Field.
+     * @param {Number} incr The increment value of the perlin noise fetching loop.
+     * @param {Number} debug Whether the grid and vectors should be rendered or not.
+     * @param {Array} colors The array of possible color for each particle.
+     * @param {Perlin} perlin The object generating the perlin noise values.
      */
     this.ffcontext = ffcontext;
     this.debugcontext = debugcontext;
@@ -155,11 +167,19 @@ class Effect {
   }
 
   init() {
+    /**
+     * Initate the Effect. First generates the flow field, then the particles.
+     */
     this.generateFlowField();
     this.generateParticles();
   }
 
   generateFlowField(clear=false) {
+    /**
+     * Function which fetches the flow field from localStorage, and generates it from the number of rows, columns and the perlin noise values otherwise.
+     * 
+     * @param {Boolean} clear If true, then refresh the flow field regardless of the localStorage value.
+     */
     this.rows = Math.floor(this.height / this.cellSize) + 1;
     this.cols = Math.floor(this.width / this.cellSize) + 1;
 
@@ -193,7 +213,9 @@ class Effect {
   }
 
   generateParticles() {
-    // Create particles
+    /**
+     * Generate a n particles, n being the integer in the class attribute numberOfParticles.
+     */
     this.particles = [];
     for (let i = 0; i < this.numberOfParticles; i++) {
       this.particles.push(new Particle(this));
@@ -201,6 +223,9 @@ class Effect {
   }
 
   drawGrid() {
+    /**
+     * Draws the grid on the debug context (background canvas).
+     */
     let debugc = this.debugcontext;
     debugc.save();
     debugc.strokeStyle = 'red';
@@ -221,6 +246,9 @@ class Effect {
   }
 
   drawVectors() {
+    /**
+     * Draw the Vectors on the debug context (background canvas).
+     */
     let debugc = this.debugcontext;
     debugc.save();
     debugc.strokeStyle = 'white';
@@ -238,6 +266,9 @@ class Effect {
   }
 
   resize(canvas, debugcanvas, width, height) {
+    /**
+     * Called when the window is resized. Change the dimensions of each canvas, then re-generate the Flow Field and reset the rendering.
+     */
     canvas.width = width;
     canvas.height = height;
     debugcanvas.width = width;
@@ -250,6 +281,15 @@ class Effect {
   }
 
   bilinearInterp(x, a, b, c, d, axis='x') {
+    /**
+     * Interpolates the x and y values between the 4 closest vector nodes in order to compute the direction of a particle.
+     * @param {Particle} x The current particle.
+     * @param {Object} a The top left node.
+     * @param {Object} b The top right node.
+     * @param {Object} c The bottom left node.
+     * @param {Object} d The bottom right node.
+     * @param {String} axis The axis on which you interpolate. For a vector you need to interpolate on x AND y.
+     */
     let row0 = (b.xpos - x.x) / (b.xpos - a.xpos) * a[axis] + (x.x - a.xpos) / (b.xpos - a.xpos) * b[axis];
     let row1 = (b.xpos - x.x) / (b.xpos - a.xpos) * c[axis] + (x.x - a.xpos) / (b.xpos - a.xpos) * d[axis];
 
@@ -257,6 +297,11 @@ class Effect {
   }
 
   getInterpolation(particle) {
+    /**
+     * Function which returns the direction Vector for a given particle by interpolating on x and y axis.
+     * 
+     * @param {Particle} particle The particle for which you want the direction.
+     */
     let topleft_node_x = ~~(particle.x / this.cellSize);
     let topleft_node_y = ~~(particle.y / this.cellSize);
     //interpolate
@@ -282,7 +327,6 @@ class Effect {
   render() {
     /**
      * Called each frame. For each particle in the particles array, draw them on canvas then update their position.
-     * 
      */
     this.particles.forEach(particle => {
       particle.draw(this.ffcontext);
@@ -291,6 +335,9 @@ class Effect {
   }
 
   resetPerlin() {
+    /**
+     * Resets the perlin noise values and generates the flow field.
+     */
     this.perlin.init(this.width, this.height);
     this.generateFlowField(true);
     this.resetRendering();
@@ -298,14 +345,22 @@ class Effect {
   }
 
   resetRendering() {
+    /**
+     * Clear the canvas and reset every particle.
+     */
     this.ffcontext.clearRect(0, 0, this.width, this.height);
     this.particles.forEach(particle => {
       particle.reset();
     });
   }
 
-  drawDebug(forceDraw=false) {
-    if (!forceDraw)
+  drawDebug(noToggle=false) {
+    /**
+     * Toggle/Untoggle the debug setting and draw the grid and vectors if it is toggled.
+     * 
+     * @param {Boolean} noToggle Bypass the toggling/untoggling if true.
+     */
+    if (!noToggle)
       this.debug = !this.debug;
     this.debugcontext.clearRect(0, 0, this.width, this.height);
     if (this.debug) {
@@ -315,12 +370,18 @@ class Effect {
   }
 
   changeColors() {
+    /**
+     * Choose a different color palette for the particles.
+     */
     this.colors = COLOR_GRADIENTS[Math.floor(Math.random() * COLOR_GRADIENTS.length)];
     this.generateParticles();
   }
 }
 
 class Chrono {
+  /**
+   * This class is used to count the framerate. It is a bit clunky, a better solution probably exists.
+   */
   constructor() {
     this.lastChrono;
     this.frameRate = 0;
@@ -348,6 +409,8 @@ const chrono = new Chrono();
 function animate(timestamp) {
   /**
    * This function is the main loop of the program. It clears the whole canvas, render every object then loop again.
+   * 
+   * @param {DOMHighResTimeStamp} timestamp The timestamp at which the function has been called.
    */
   chrono.computeChrono(timestamp);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -356,6 +419,7 @@ function animate(timestamp) {
     requestAnimationFrame(animate);
 }
 
+// Key binding shortcut for user actions
 window.addEventListener('keydown', e => {
   if (e.key === 'd') {
     effect.drawDebug();
